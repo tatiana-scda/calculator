@@ -88,8 +88,6 @@ void ApplicationViewModel::Initialize(ViewMode mode)
         TraceLogger::GetInstance().LogStandardException(mode, __FUNCTIONW__, e);
         if (!TryRecoverFromNavigationModeFailure())
         {
-            // Could not navigate to standard mode either.
-            // Throw the original exception so we have a good stack to debug.
             throw;
         }
     }
@@ -98,8 +96,6 @@ void ApplicationViewModel::Initialize(ViewMode mode)
         TraceLogger::GetInstance().LogPlatformException(mode, __FUNCTIONW__, e);
         if (!TryRecoverFromNavigationModeFailure())
         {
-            // Could not navigate to standard mode either.
-            // Throw the original exception so we have a good stack to debug.
             throw;
         }
     }
@@ -107,9 +103,6 @@ void ApplicationViewModel::Initialize(ViewMode mode)
 
 bool ApplicationViewModel::TryRecoverFromNavigationModeFailure()
 {
-    // Here we are simply trying to recover from being unable to navigate to a mode.
-    // Try falling back to standard mode and if there are *any* exceptions, we should
-    // fail because something is seriously wrong.
     try
     {
         Mode = ViewMode::Standard;
@@ -154,12 +147,8 @@ void ApplicationViewModel::OnModeChanged()
     auto resProvider = AppResourceProvider::GetInstance();
     CategoryName = resProvider.GetResourceString(NavCategory::GetNameResourceKey(m_mode));
 
-    // Cast mode to an int in order to save it to app data.
-    // Save the changed mode, so that the new window launches in this mode.
-    // Don't save until after we have adjusted to the new mode, so we don't save a mode that fails to load.
     ApplicationData::Current->LocalSettings->Values->Insert(ModePropertyName, NavCategory::Serialize(m_mode));
 
-    // Log ModeChange event when not first launch, log WindowCreated on first launch
     if (NavCategory::IsValidViewMode(m_PreviousMode))
     {
         TraceLogger::GetInstance().LogModeChange(m_mode);
@@ -202,67 +191,9 @@ void ApplicationViewModel::OnPasteCommand(Object ^ parameter)
 
 void ApplicationViewModel::SetMenuCategories()
 {
-    // Use the Categories property instead of the backing variable
-    // because we want to take advantage of binding updates and
-    // property setter logic.
     Categories = NavCategoryGroup::CreateMenuOptions();
 }
 
-void ApplicationViewModel::ToggleAlwaysOnTop(float width, float height)
-{
-    HandleToggleAlwaysOnTop(width, height);
-}
 
-#pragma optimize("", off)
-task<void> ApplicationViewModel::HandleToggleAlwaysOnTop(float width, float height)
-{
-    if (ApplicationView::GetForCurrentView()->ViewMode == ApplicationViewMode::CompactOverlay)
-    {
-        ApplicationDataContainer ^ localSettings = ApplicationData::Current->LocalSettings;
-        localSettings->Values->Insert(WidthLocalSettings, width);
-        localSettings->Values->Insert(HeightLocalSettings, height);
 
-        bool success = co_await ApplicationView::GetForCurrentView()->TryEnterViewModeAsync(ApplicationViewMode::Default);
-        CalculatorViewModel->AreHistoryShortcutsEnabled = success;
-        CalculatorViewModel->HistoryVM->AreHistoryShortcutsEnabled = success;
-        CalculatorViewModel->IsAlwaysOnTop = !success;
-        IsAlwaysOnTop = !success;
-    }
-    else
-    {
-        ApplicationDataContainer ^ localSettings = ApplicationData::Current->LocalSettings;
-        ViewModePreferences ^ compactOptions = ViewModePreferences::CreateDefault(ApplicationViewMode::CompactOverlay);
-        if (!localSettings->Values->GetView()->HasKey(LaunchedLocalSettings))
-        {
-            compactOptions->CustomSize = Size(320, 394);
-            localSettings->Values->Insert(LaunchedLocalSettings, true);
-        }
-        else
-        {
-            if (localSettings->Values->GetView()->HasKey(WidthLocalSettings) && localSettings->Values->GetView()->HasKey(HeightLocalSettings))
-            {
-                float oldWidth = safe_cast<IPropertyValue ^>(localSettings->Values->GetView()->Lookup(WidthLocalSettings))->GetSingle();
-                float oldHeight = safe_cast<IPropertyValue ^>(localSettings->Values->GetView()->Lookup(HeightLocalSettings))->GetSingle();
-                compactOptions->CustomSize = Size(oldWidth, oldHeight);
-            }
-            else
-            {
-                compactOptions->CustomSize = Size(320, 394);
-            }
-        }
 
-        bool success = co_await ApplicationView::GetForCurrentView()->TryEnterViewModeAsync(ApplicationViewMode::CompactOverlay, compactOptions);
-        CalculatorViewModel->AreHistoryShortcutsEnabled = !success;
-        CalculatorViewModel->HistoryVM->AreHistoryShortcutsEnabled = !success;
-        CalculatorViewModel->IsAlwaysOnTop = success;
-        IsAlwaysOnTop = success;
-    }
-    SetDisplayNormalAlwaysOnTopOption();
-};
-#pragma optimize("", on)
-
-void ApplicationViewModel::SetDisplayNormalAlwaysOnTopOption()
-{
-    DisplayNormalAlwaysOnTopOption =
-        m_mode == ViewMode::Standard && ApplicationView::GetForCurrentView()->IsViewModeSupported(ApplicationViewMode::CompactOverlay) && !IsAlwaysOnTop;
-}

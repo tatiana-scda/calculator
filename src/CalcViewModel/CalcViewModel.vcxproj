@@ -402,6 +402,7 @@
     </ClCompile>
     <ClCompile Include="StandardCalculatorViewModel.cpp" />
     <ClCompile Include="UnitConverterViewModel.cpp" />
+    <ClCompile Include="ViewModelDisplay.cpp" />
     <ClCompile Include="ViewState.cpp" />
   </ItemGroup>
   <ItemGroup>
