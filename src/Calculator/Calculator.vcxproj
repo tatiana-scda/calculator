@@ -361,6 +361,7 @@
     </ClCompile>
     <ClCompile Include="Common\AppLifecycleLogger.cpp" />
     <ClCompile Include="Controls\CalculationResultAutomationPeer.cpp" />
+    <ClCompile Include="Controls\Margin.cpp" />
     <ClCompile Include="Controls\OverflowTextBlockAutomationPeer.cpp" />
     <ClCompile Include="Common\BindableBase.cpp" />
     <ClCompile Include="Controls\CalculationResult.cpp" />

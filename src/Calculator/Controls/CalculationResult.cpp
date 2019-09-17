@@ -29,7 +29,6 @@ DEPENDENCY_PROPERTY_INITIALIZATION(CalculationResult, IsActive);
 DEPENDENCY_PROPERTY_INITIALIZATION(CalculationResult, AccentColor);
 DEPENDENCY_PROPERTY_INITIALIZATION(CalculationResult, MinFontSize);
 DEPENDENCY_PROPERTY_INITIALIZATION(CalculationResult, MaxFontSize);
-DEPENDENCY_PROPERTY_INITIALIZATION(CalculationResult, DisplayMargin);
 DEPENDENCY_PROPERTY_INITIALIZATION(CalculationResult, MaxExpressionHistoryCharacters);
 DEPENDENCY_PROPERTY_INITIALIZATION(CalculationResult, ExpressionVisibility);
 DEPENDENCY_PROPERTY_INITIALIZATION(CalculationResult, DisplayValue);
@@ -191,85 +190,7 @@ void CalculationResult::UpdateVisualState()
     }
 }
 
-void CalculationResult::UpdateTextState()
-{
-    if ((m_textContainer == nullptr) || (m_textBlock == nullptr))
-    {
-        return;
-    }
 
-    auto containerSize = m_textContainer->ActualWidth;
-    String ^ oldText = m_textBlock->Text;
-    String ^ newText = Utils::LRO + DisplayValue + Utils::PDF;
-
-    // Initiate the scaling operation
-    // UpdateLayout will keep calling us until we make it through the below 2 if-statements
-    if (!m_isScalingText || oldText != newText)
-    {
-        m_textBlock->Text = newText;
-
-        m_isScalingText = true;
-        m_haveCalculatedMax = false;
-        m_textBlock->InvalidateArrange();
-        return;
-    }
-    if (containerSize > 0)
-    {
-        double widthDiff = abs(m_textBlock->ActualWidth - containerSize);
-        double fontSizeChange = INCREMENTOFFSET;
-
-        if (widthDiff > WIDTHCUTOFF)
-        {
-            fontSizeChange = min<double>(max<double>(floor(WIDTHTOFONTSCALAR * widthDiff) - WIDTHTOFONTOFFSET, INCREMENTOFFSET), MAXFONTINCREMENT);
-        }
-        if (m_textBlock->ActualWidth < containerSize && abs(m_textBlock->FontSize - MaxFontSize) > FONTTOLERANCE && !m_haveCalculatedMax)
-        {
-            ModifyFontAndMargin(m_textBlock, fontSizeChange);
-            m_textBlock->InvalidateArrange();
-            return;
-        }
-        if (fontSizeChange < 5)
-        {
-            m_haveCalculatedMax = true;
-        }
-        if (m_textBlock->ActualWidth >= containerSize && abs(m_textBlock->FontSize - MinFontSize) > FONTTOLERANCE)
-        {
-            ModifyFontAndMargin(m_textBlock, -1 * fontSizeChange);
-            m_textBlock->InvalidateArrange();
-            return;
-        }
-        assert(m_textBlock->FontSize >= MinFontSize && m_textBlock->FontSize <= MaxFontSize);
-        m_isScalingText = false;
-        if (IsOperatorCommand)
-        {
-            m_textContainer->ChangeView(0.0, nullptr, nullptr);
-        }
-        else
-        {
-            m_textContainer->ChangeView(m_textContainer->ExtentWidth - m_textContainer->ViewportWidth, nullptr, nullptr);
-        }
-
-        if (m_scrollLeft && m_scrollRight)
-        {
-            if (m_textBlock->ActualWidth < containerSize)
-            {
-                ShowHideScrollButtons(::Visibility::Collapsed, ::Visibility::Collapsed);
-            }
-            else
-            {
-                if (IsOperatorCommand)
-                {
-                    ShowHideScrollButtons(::Visibility::Collapsed, ::Visibility::Visible);
-                }
-                else
-                {
-                    ShowHideScrollButtons(::Visibility::Visible, ::Visibility::Collapsed);
-                }
-            }
-        }
-        m_textBlock->InvalidateArrange();
-    }
-}
 
 void CalculationResult::ScrollLeft()
 {
@@ -365,21 +286,6 @@ void CalculationResult::OnPointerExited(Platform::Object ^ sender, PointerRouted
     {
         UpdateScrollButtons();
     }
-}
-
-void CalculationResult::ModifyFontAndMargin(TextBlock ^ textBox, double fontChange)
-{
-    double cur = textBox->FontSize;
-    double newFontSize = 0.0;
-    double scaleFactor = SCALEFACTOR;
-    if (m_textContainer->ActualHeight <= HEIGHTCUTOFF)
-    {
-        scaleFactor = SMALLHEIGHTSCALEFACTOR;
-    }
-
-    newFontSize = min(max(cur + fontChange, MinFontSize), MaxFontSize);
-    m_textContainer->Padding = Thickness(0, 0, 0, scaleFactor * abs(cur - newFontSize));
-    textBox->FontSize = newFontSize;
 }
 
 void CalculationResult::UpdateAllState()
